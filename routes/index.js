@@ -1,11 +1,11 @@
 import express from 'express';
 import AppController from '../controllers/AppController';
 
-
+function controllerRouting(app) {
   const router = express.Router();
   app.use('/', router);
 
- // App Controller
+  // App Controller
 
   // Returns if Redis and DB is alive.
   router.get('/status', (req, res) => {
@@ -16,3 +16,6 @@ import AppController from '../controllers/AppController';
   router.get('/stats', (req, res) => {
     AppController.getStats(req, res);
   });
+}
+
+export default controllerRouting;
