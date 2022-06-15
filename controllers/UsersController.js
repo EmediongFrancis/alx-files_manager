@@ -43,7 +43,7 @@ class UsersController {
       });
     } catch (err) {
       await userQueue.add({});
-      return response.status(500).send({ error: 'Error creating user' });
+      return response.status(500).send({ error: 'Error creating user.' });
     }
 
     const user = {
