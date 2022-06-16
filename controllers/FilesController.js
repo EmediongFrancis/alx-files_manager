@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb';
-// import mime from 'mime-types';
+import mime from 'mime-types';
 import Queue from 'bull';
 import userUtils from '../utils/user';
 import fileUtils from '../utils/file';
@@ -193,6 +193,96 @@ class FilesController {
     });
 
     return response.status(200).send(fileList);
+  }
+
+  /**
+   * Should set isPublic to true on the file document based on the ID
+   *
+   * Retrieve the user based on the token:
+   * If not found, return an error Unauthorized with a status code 401
+   * If no file document is linked to the user and the ID passed as parameter,
+   * return an error Not found with a status code 404
+   * Otherwise:
+   * Update the value of isPublic to true
+   * And return the file document with a status code 200
+   */
+  static async putPublish(request, response) {
+    const { error, code, updatedFile } = await fileUtils.publishUnpublish(
+      request,
+      true,
+    );
+
+    if (error) return response.status(code).send({ error });
+
+    return response.status(code).send(updatedFile);
+  }
+
+  /**
+   * Should set isPublic to false on the file document based on the ID
+   *
+   * Retrieve the user based on the token:
+   * If not found, return an error Unauthorized with a status code 401
+   * If no file document is linked to the user and the ID passed as parameter,
+   * return an error Not found with a status code 404
+   * Otherwise:
+   * Update the value of isPublic to false
+   * And return the file document with a status code 200
+   */
+  static async putUnpublish(request, response) {
+    const { error, code, updatedFile } = await fileUtils.publishUnpublish(
+      request,
+      false,
+    );
+
+    if (error) return response.status(code).send({ error });
+
+    return response.status(code).send(updatedFile);
+  }
+
+  /**
+   * Should return the content of the file document based on the ID
+   *
+   * If no file document is linked to the ID passed as parameter, return an error
+   * Not found with a status code 404
+   * If the file document (folder or file) is not public (isPublic: false) and no user
+   * authenticate or not the owner of the
+   * file, return an error Not found with a status code 404
+   * If the type of the file document is folder, return an error A folder doesn't have content
+   * with a status code 400
+   * If the file is not locally present, return an error Not found with a status code 404
+   * Otherwise:
+   * By using the module mime-types, get the MIME-type based on the name of the file
+   * Return the content of the file with the correct MIME-type
+   */
+  static async getFile(request, response) {
+    const { userId } = await userUtils.getUserIdAndKey(request);
+    const { id: fileId } = request.params;
+    const size = request.query.size || 0;
+
+    // Mongo Condition for Id
+    if (!basicUtils.isValidId(fileId)) { return response.status(404).send({ error: 'Not found' }); }
+
+    const file = await fileUtils.getFile({
+      _id: ObjectId(fileId),
+    });
+
+    if (!file || !fileUtils.isOwnerAndPublic(file, userId)) { return response.status(404).send({ error: 'Not found' }); }
+
+    if (file.type === 'folder') {
+      return response
+        .status(400)
+        .send({ error: "A folder doesn't have content" });
+    }
+
+    const { error, code, data } = await fileUtils.getFileData(file, size);
+
+    if (error) return response.status(code).send({ error });
+
+    const mimeType = mime.contentType(file.name);
+
+    response.setHeader('Content-Type', mimeType);
+
+    return response.status(200).send(data);
   }
 }
 
