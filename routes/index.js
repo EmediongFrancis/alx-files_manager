@@ -10,7 +10,7 @@ function controllerRouting(app) {
 
   // App Controller
 
-  // Returns if Redis and DB is alive.
+  // should return if Redis is alive and if the DB is alive
   router.get('/status', (req, res) => {
     AppController.getStatus(req, res);
   });
